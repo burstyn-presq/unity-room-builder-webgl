@@ -1,40 +1,113 @@
 <!DOCTYPE html>
-<html lang="en-us">
+<html lang="en">
   <head>
-    <meta charset="utf-8">
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <title>Unity WebGL Player | PresqCrateBuilder</title>
-  </head>
-  <body style="text-align: center; padding: 0; border: 0; margin: 0;">
-    <canvas id="unity-canvas" width=960 height=600 tabindex="-1" style="width: 960px; height: 600px; background: #231F20"></canvas>
-    <script src="Build/WebGL.loader.js"></script>
-    <script>
-      if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-        // Mobile device style: fill the whole browser client area with the game canvas:
-        var meta = document.createElement('meta');
-        meta.name = 'viewport';
-        meta.content = 'width=device-width, height=device-height, initial-scale=1.0, user-scalable=no, shrink-to-fit=yes';
-        document.getElementsByTagName('head')[0].appendChild(meta);
-
-        var canvas = document.querySelector("#unity-canvas");
-        canvas.style.width = "100%";
-        canvas.style.height = "100%";
-        canvas.style.position = "fixed";
-
-        document.body.style.textAlign = "left";
+    <meta charset="utf-8" />
+    <title>Presq Studio Builder</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <style>
+      html, body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        height: 100%;
+        background: #111;
+        font-family: system-ui, sans-serif;
       }
+      #unity-container {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+      }
+      canvas {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+      #loading {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+        color: #aaa;
+        font-size: 0.9rem;
+        letter-spacing: 0.05em;
+        font-weight: 500;
+      }
+      #progress-bar {
+        width: 180px;
+        height: 6px;
+        background: #222;
+        border-radius: 3px;
+        overflow: hidden;
+        margin-top: 12px;
+      }
+      #progress-fill {
+        height: 100%;
+        width: 0%;
+        background: linear-gradient(90deg, #00d4ff, #0077ff);
+        transition: width 0.2s ease-out;
+      }
+      @media (max-width: 768px) {
+        #loading { font-size: 0.8rem; }
+        #progress-bar { width: 140px; }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="unity-container">
+      <canvas id="unity-canvas"></canvas>
+      <div id="loading">
+        Loading Studio Builder...
+        <div id="progress-bar"><div id="progress-fill"></div></div>
+      </div>
+    </div>
 
-      createUnityInstance(document.querySelector("#unity-canvas"), {
-        dataUrl: "Build/WebGL.data.br",
-        frameworkUrl: "Build/WebGL.framework.js.br",
-        codeUrl: "Build/WebGL.wasm.br",
+    <!-- Unity loader from R2 with correct path -->
+    <script src="https://pub-9e4bd3df170f4566a405986c45698c7f.r2.dev/V1.0.0/Build/WebGL.loader.js"></script>
+    <script>
+      // Configuration loading from R2 bucket
+      const config = {
+        dataUrl: "https://pub-9e4bd3df170f4566a405986c45698c7f.r2.dev/V1.0.0/Build/WebGL.data.br",
+        frameworkUrl: "https://pub-9e4bd3df170f4566a405986c45698c7f.r2.dev/V1.0.0/Build/WebGL.framework.js.br",
+        codeUrl: "https://pub-9e4bd3df170f4566a405986c45698c7f.r2.dev/V1.0.0/Build/WebGL.wasm.br",
         streamingAssetsUrl: "StreamingAssets",
         companyName: "PlatformByPresq",
-        productName: "PresqCrateBuilder",
-        productVersion: "0.1",
-        // matchWebGLToCanvasSize: false, // Uncomment this to separately control WebGL canvas render size and DOM element size.
-        // devicePixelRatio: 1, // Uncomment this to override low DPI rendering on high DPI displays.
-      });
+        productName: "Room Builder",
+        productVersion: "1.0",
+      };
+
+      const canvas = document.querySelector("#unity-canvas");
+      const loading = document.querySelector("#loading");
+      const progressFill = document.querySelector("#progress-fill");
+
+      // Create Unity instance with loading progress
+      createUnityInstance(canvas, config, (progress) => {
+        progressFill.style.width = (progress * 100).toFixed(1) + "%";
+      })
+        .then((unityInstance) => {
+          loading.remove();
+          console.log("Unity loaded successfully!");
+          
+          // Store instance globally for web-to-Unity communication
+          window.unityInstance = unityInstance;
+        })
+        .catch((message) => {
+          loading.textContent = "❌ Failed to load Unity instance.";
+          console.error("Unity load error:", message);
+        });
+
+      // Helper function for sending data to Unity
+      window.sendToUnity = function(gameObjectName, methodName, parameter) {
+        if (window.unityInstance) {
+          window.unityInstance.SendMessage(gameObjectName, methodName, parameter);
+        } else {
+          console.warn("Unity instance not ready yet");
+        }
+      };
     </script>
   </body>
 </html>

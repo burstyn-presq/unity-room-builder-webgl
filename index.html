@@ -109,5 +109,37 @@
         }
       };
     </script>
+    <script>
+  // Notify parent window when Unity loads successfully
+  script.onload = function() {
+    createUnityInstance(canvas, config, (progress) => {
+      progressBarFull.style.width = 100 * progress + "%";
+    }).then((unityInstance) => {
+      loadingBar.style.display = "none";
+      fullscreenButton.onclick = () => {
+        unityInstance.SetFullscreen(1);
+      };
+      
+      // Notify parent window that Unity has loaded
+      if (window.parent !== window) {
+        window.parent.postMessage({ type: 'unityLoaded' }, '*');
+      }
+      
+      // Listen for messages from parent
+      window.addEventListener('message', (event) => {
+        if (event.data.type === 'importItem') {
+          // Forward to Unity's game object
+          unityInstance.SendMessage('SceneManager', 'ImportItemFromWeb', JSON.stringify(event.data.data));
+        }
+      });
+    }).catch((message) => {
+      alert(message);
+      // Notify parent of error
+      if (window.parent !== window) {
+        window.parent.postMessage({ type: 'unityError', data: message }, '*');
+      }
+    });
+  };
+</script>
   </body>
 </html>

@@ -90,23 +90,50 @@
       })
         .then((unityInstance) => {
           loading.remove();
-          console.log("Unity loaded successfully!");
+          console.log("✅ Unity loaded successfully!");
           
           // Store instance globally for web-to-Unity communication
           window.unityInstance = unityInstance;
 
           // ✅ Notify parent window that Unity has loaded
           if (window.parent !== window) {
+            console.log("[Unity] Notifying parent window: Unity loaded");
             window.parent.postMessage({ type: 'unityLoaded' }, '*');
           }
 
-          // ✅ Listen for messages from parent window
+          // ✅ Listen for postMessage from parent window (web app)
           window.addEventListener('message', (event) => {
-            if (event.data.type === 'importItem') {
-              // Forward to Unity's game object
-              unityInstance.SendMessage('SceneManager', 'ImportItemFromWeb', JSON.stringify(event.data.data));
+            console.log("[Unity] Received postMessage:", event.data);
+            
+            if (event.data && event.data.type === 'importItem') {
+              console.log("[Unity] Processing importItem request");
+              
+              // Convert data to JSON string (Unity requirement)
+              const jsonString = typeof event.data.data === 'string' 
+                ? event.data.data 
+                : JSON.stringify(event.data.data);
+              
+              console.log("[Unity] Forwarding to WebGLBridge:", jsonString);
+              
+              try {
+                // ⚠️ CRITICAL: Must send to 'WebGLBridge' GameObject
+                unityInstance.SendMessage('WebGLBridge', 'ImportItemFromWeb', jsonString);
+                console.log("[Unity] ✅ Message sent to Unity successfully");
+              } catch (error) {
+                console.error("[Unity] ❌ Failed to send to Unity:", error);
+              }
             }
-          });
+          }, false);
+
+          // Direct function for testing/debugging
+          window.sendFurnitureToUnity = function(data) {
+            const jsonString = typeof data === 'string' ? data : JSON.stringify(data);
+            console.log("[Unity] Direct call - sending to WebGLBridge:", jsonString);
+            unityInstance.SendMessage('WebGLBridge', 'ImportItemFromWeb', jsonString);
+          };
+
+          console.log("✅ Unity ready - postMessage listener active");
+          console.log("✅ You can also call: window.sendFurnitureToUnity(data)");
         })
         .catch((message) => {
           loading.textContent = "❌ Failed to load Unity instance.";
@@ -118,7 +145,7 @@
           }
         });
 
-      // Helper function for sending data to Unity
+      // Legacy helper function (kept for compatibility)
       window.sendToUnity = function(gameObjectName, methodName, parameter) {
         if (window.unityInstance) {
           window.unityInstance.SendMessage(gameObjectName, methodName, parameter);
